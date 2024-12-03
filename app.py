@@ -3,7 +3,7 @@ from tkinter import messagebox
 from models.user import User
 from models.geofence import Geofence
 from models.ad import Ad
-from utils.geofence_logic import get_relevant_ads
+from utils.geofence_logic import get_relevant_ads  
 
 class LocationBasedAdsApp:
     def __init__(self):
@@ -128,6 +128,40 @@ class LocationBasedAdsApp:
         Start the main loop of the application.
         """
         self.root.mainloop()
+
+
+import random
+import time
+from tkinter import messagebox, ttk
+class LocationBasedAdsApp:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Location-Based Ads & Offers")
+
+        # Logged-in user ID
+        self.logged_in_user_id = None
+
+        # Create a notebook (tabbed widget)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # Create tabs
+        self.customer_tab = ttk.Frame(self.notebook)
+        self.admin_tab = ttk.Frame(self.notebook)
+        self.demo_tab = ttk.Frame(self.notebook)
+
+        # Add tabs to the notebook
+        self.notebook.add(self.customer_tab, text="Customer")
+        self.notebook.add(self.admin_tab, text="Admin")
+        self.notebook.add(self.demo_tab, text="Demo")
+
+        self.create_login_screen() 
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
