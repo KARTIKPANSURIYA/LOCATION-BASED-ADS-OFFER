@@ -45,4 +45,5 @@ def get_relevant_ads(user_location):
 
     if not relevant_ads:
         print("No relevant ads found for this location.")
+
     return relevant_ads

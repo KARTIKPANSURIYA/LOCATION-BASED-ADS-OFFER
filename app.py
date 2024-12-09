@@ -8,11 +8,9 @@ from utils.db_connection import create_connection
 import threading
 import time
 from random import uniform
-
+from opencage.geocoder import OpenCageGeocode
 import geocoder
-
-
-
+import requests
 
 class LocationBasedAdsApp:
     def __init__(self):
@@ -274,7 +272,6 @@ class LocationBasedAdsApp:
             ads = get_relevant_ads(user_location)
             self.offers_text.delete("1.0", tk.END)  # Clear previous offers
 
-            # Display new ads
             if ads:
                 for ad in ads:
                     self.offers_text.insert(tk.END, f"Ad Title: {ad['title']}\nDescription: {ad['description']}\n\n")
@@ -298,7 +295,7 @@ class LocationBasedAdsApp:
 
     def simulate_user_movement(self):
         """
-        Simulate a user moving through random locations and display relevant ads.
+        Simulate a user moving through random locations with the ability to stop.
         """
         self.simulation_active = True
         tk.Label(self.root, text="Simulated Movement Active", fg="blue").pack(pady=5)
@@ -307,22 +304,17 @@ class LocationBasedAdsApp:
         def move():
             nonlocal last_ads
             while self.simulation_active:
-                # Randomly generate new user location
-                user_lat = uniform(40.7000, 40.7500)  # Adjust range to cover geofences
-                user_lon = uniform(-74.0200, -73.9300)  # Adjust range to cover geofences
+                user_lat = uniform(40.7000, 40.8000)  # Latitude range near NYC
+                user_lon = uniform(-74.1000, -73.9000)  # Longitude range near NYC
                 user_location = (user_lat, user_lon)
 
                 # Fetch relevant ads
                 ads = get_relevant_ads(user_location)
 
-                # Only update ads if they are different from the last set
                 if ads != last_ads:
                     last_ads = ads
-
-                    # Clear previous ads from the text widget
                     self.offers_text.delete("1.0", tk.END)
 
-                    # Display new ads
                     if ads:
                         for ad in ads:
                             self.offers_text.insert(tk.END,
@@ -330,10 +322,8 @@ class LocationBasedAdsApp:
                     else:
                         self.offers_text.insert(tk.END, "No offers available in your area.\n")
 
-                # Wait for a few seconds before simulating the next location
                 time.sleep(5)
 
-        # Run the simulation in a separate thread
         threading.Thread(target=move, daemon=True).start()
 
     def stop_simulation(self):
@@ -345,16 +335,23 @@ class LocationBasedAdsApp:
 
     def get_current_location(self):
         """
-        Fetch the user's current location using geocoder.
+        Fetch the user's current location using Google Maps Geolocation API.
         Returns (latitude, longitude) if successful, or None if not.
         """
+        API_KEY = "AIzaSyC8dmyIo4iOlAGywPxU1JmYjm9olNPRDAQ"  # Use your Google API Key
+        endpoint = f"https://www.googleapis.com/geolocation/v1/geolocate?key={API_KEY}"
+
         try:
-            g = geocoder.ip('me')  # Get location from IP address
-            if g.ok:
-                return g.latlng
-            else:
-                return None
-        except Exception as e:
+            # Make the request to Google's Geolocation API
+            response = requests.post(endpoint, json={})
+            response.raise_for_status()  # Raise HTTPError for bad responses
+
+            # Parse the response JSON
+            location = response.json()["location"]
+            lat, lng = location["lat"], location["lng"]
+            print(f"Detected location: Latitude {lat}, Longitude {lng}")
+            return lat, lng
+        except requests.exceptions.RequestException as e:
             print(f"Error fetching location: {e}")
             return None
 
@@ -369,6 +366,7 @@ class LocationBasedAdsApp:
             # Fetch current location
             current_location = self.get_current_location()
             if current_location:
+                print(f"Setting GUI to detected location: {current_location}")  # Debug
                 self.latitude_entry.delete(0, tk.END)
                 self.longitude_entry.delete(0, tk.END)
                 self.latitude_entry.insert(0, str(current_location[0]))
@@ -379,6 +377,25 @@ class LocationBasedAdsApp:
         else:
             # Show manual location input
             self.manual_location_frame.pack(pady=10)
+
+    def update_location_periodically(self):
+        """
+        Fetch and update the user's location periodically.
+        """
+
+        def update():
+            while self.location_mode_var.get() == "automatic":
+                current_location = self.get_current_location()
+                if current_location:
+                    print(f"Periodic location update: {current_location}")  # Debug
+                    self.latitude_entry.delete(0, tk.END)
+                    self.longitude_entry.delete(0, tk.END)
+                    self.latitude_entry.insert(0, str(current_location[0]))
+                    self.longitude_entry.insert(0, str(current_location[1]))
+                    self.check_for_offers()
+                time.sleep(10)  # Update every 10 seconds
+
+        threading.Thread(target=update, daemon=True).start()
 
 
 if __name__ == "__main__":
