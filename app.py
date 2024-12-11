@@ -1,5 +1,9 @@
+
 import tkinter as tk
 from tkinter import messagebox
+
+from opencage.geocoder import OpenCageGeocode
+
 from models.user import User
 from models.geofence import Geofence
 from models.ad import Ad
@@ -7,9 +11,6 @@ from utils.geofence_logic import get_relevant_ads
 from utils.db_connection import create_connection
 import threading
 import time
-from random import uniform
-from opencage.geocoder import OpenCageGeocode
-import geocoder
 import requests
 
 class LocationBasedAdsApp:
@@ -142,9 +143,11 @@ class LocationBasedAdsApp:
         self.clear_window()
         tk.Label(self.root, text="Personal User Dashboard", font=("Arial", 16)).pack(pady=10)
 
+        # Initialize location mode variable
+        self.location_mode_var = tk.StringVar(value="automatic")
+
         # Location Mode: Automatic or Manual
         tk.Label(self.root, text="Select Location Mode:").pack(pady=5)
-        self.location_mode_var = tk.StringVar(value="automatic")
         tk.Radiobutton(self.root, text="Automatic", variable=self.location_mode_var, value="automatic",
                        command=self.handle_location_mode).pack()
         tk.Radiobutton(self.root, text="Manual", variable=self.location_mode_var, value="manual",
@@ -167,6 +170,51 @@ class LocationBasedAdsApp:
 
         # Automatically fetch location on start
         self.handle_location_mode()
+
+    def handle_location_mode(self):
+        """
+        Handle the selected location mode: automatic or manual.
+        """
+        if self.location_mode_var.get() == "automatic":
+            # Fetch current location
+            current_location = self.get_current_location()
+            if current_location:
+                self.latitude_entry.delete(0, tk.END)
+                self.longitude_entry.delete(0, tk.END)
+                self.latitude_entry.insert(0, str(current_location[0]))
+                self.longitude_entry.insert(0, str(current_location[1]))
+                self.check_for_offers()
+            else:
+                messagebox.showerror("Error", "Unable to fetch current location.")
+        else:
+            # Show manual location input
+            self.manual_location_frame.pack(pady=10)
+
+    def check_for_offers(self):
+        """
+        Check for relevant ads based on the user's selected location.
+        """
+        try:
+            # Fetch user-provided or detected location
+            user_lat = float(self.latitude_entry.get())
+            user_lon = float(self.longitude_entry.get())
+
+            # Fetch relevant ads
+            ads = get_relevant_ads(user_lat, user_lon)
+
+            # Clear the text widget for offers
+            self.offers_text.delete("1.0", tk.END)
+
+            # Display new ads
+            if ads:
+                for ad in ads:
+                    self.offers_text.insert(tk.END, f"Ad Title: {ad[0]}\nDescription: {ad[1]}\n\n")
+            else:
+                self.offers_text.insert(tk.END, "No offers available in your area.\n")
+        except ValueError:
+            messagebox.showerror("Input Error", "Please enter valid latitude and longitude.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
     def add_geofence_and_ad(self):
         """
@@ -198,153 +246,18 @@ class LocationBasedAdsApp:
         tk.Button(self.root, text="Add", command=self.save_geofence_and_ad).pack(pady=10)
         tk.Button(self.root, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=5)
 
-    def save_geofence_and_ad(self):
-        """
-        Save the geofence and associated ad to the database.
-        """
-        try:
-            # Geofence Inputs
-            latitude = float(self.geo_lat_entry.get())
-            longitude = float(self.geo_lon_entry.get())
-            radius_km = float(self.geo_radius_entry.get())
-
-            # Ad Inputs
-            ad_title = self.ad_title_entry.get()
-            ad_description = self.ad_description_entry.get()
-
-            # Save Geofence
-            geofence = Geofence(self.logged_in_user_id, latitude, longitude, radius_km)
-            geofence.save_to_db()
-
-            # Fetch the ID of the newly created geofence
-            conn = create_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT last_insert_rowid()")
-            geofence_id = cursor.fetchone()[0]
-            conn.close()
-
-            # Save Ad
-            ad = Ad(geofence_id, ad_title, ad_description)
-            ad.save_to_db()
-
-            messagebox.showinfo("Success", "Geofence and Ad added successfully!")
-            self.create_business_dashboard()
-        except ValueError:
-            messagebox.showerror("Input Error", "Please enter valid geofence and ad details.")
-
-    def view_geofences_and_ads(self):
-        """
-        Display all geofences and ads created by the business user.
-        """
-        self.clear_window()
-        tk.Label(self.root, text="Your Geofences and Ads", font=("Arial", 16)).pack(pady=10)
-
-        # Fetch Geofences and Ads
-        geofences = Geofence.get_all_geofences()
-        conn = create_connection()
-        cursor = conn.cursor()
-
-        for geofence in geofences:
-            if geofence[1] == self.logged_in_user_id:  # Only show geofences created by this user
-                tk.Label(self.root, text=f"Geofence ID: {geofence[0]}").pack()
-                tk.Label(self.root, text=f"Center: ({geofence[2]}, {geofence[3]})").pack()
-                tk.Label(self.root, text=f"Radius: {geofence[4]} km").pack()
-
-                # Fetch ads for this geofence
-                ads = Ad.get_ads_by_geofence(geofence[0])
-                for ad in ads:
-                    tk.Label(self.root, text=f"    Ad Title: {ad[2]}").pack()
-                    tk.Label(self.root, text=f"    Description: {ad[3]}").pack()
-                tk.Label(self.root, text="").pack()  # Blank line for spacing
-
-        tk.Button(self.root, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=10)
-
-    def check_for_offers(self):
-        """
-        Check for relevant ads based on the user's selected location.
-        """
-        try:
-            user_lat = float(self.latitude_entry.get())
-            user_lon = float(self.longitude_entry.get())
-            user_location = (user_lat, user_lon)
-
-            # Fetch relevant ads
-            ads = get_relevant_ads(user_location)
-            self.offers_text.delete("1.0", tk.END)  # Clear previous offers
-
-            if ads:
-                for ad in ads:
-                    self.offers_text.insert(tk.END, f"Ad Title: {ad['title']}\nDescription: {ad['description']}\n\n")
-            else:
-                self.offers_text.insert(tk.END, "No offers available in your area.\n")
-        except ValueError:
-            messagebox.showerror("Input Error", "Please enter valid latitude and longitude.")
-
-    def clear_window(self):
-        """
-        Clear the current window content.
-        """
-        for widget in self.root.winfo_children():
-            widget.destroy()
-
-    def run(self):
-        """
-        Start the main loop of the application.
-        """
-        self.root.mainloop()
-
-    def simulate_user_movement(self):
-        """
-        Simulate a user moving through random locations with the ability to stop.
-        """
-        self.simulation_active = True
-        tk.Label(self.root, text="Simulated Movement Active", fg="blue").pack(pady=5)
-        last_ads = []  # Keep track of the last set of ads
-
-        def move():
-            nonlocal last_ads
-            while self.simulation_active:
-                user_lat = uniform(40.7000, 40.8000)  # Latitude range near NYC
-                user_lon = uniform(-74.1000, -73.9000)  # Longitude range near NYC
-                user_location = (user_lat, user_lon)
-
-                # Fetch relevant ads
-                ads = get_relevant_ads(user_location)
-
-                if ads != last_ads:
-                    last_ads = ads
-                    self.offers_text.delete("1.0", tk.END)
-
-                    if ads:
-                        for ad in ads:
-                            self.offers_text.insert(tk.END,
-                                                    f"Ad Title: {ad['title']}\nDescription: {ad['description']}\n\n")
-                    else:
-                        self.offers_text.insert(tk.END, "No offers available in your area.\n")
-
-                time.sleep(5)
-
-        threading.Thread(target=move, daemon=True).start()
-
-    def stop_simulation(self):
-        """
-        Stop the simulation of user movement.
-        """
-        self.simulation_active = False
-        tk.Label(self.root, text="Simulation Stopped", fg="red").pack(pady=5)
-
     def get_current_location(self):
         """
         Fetch the user's current location using Google Maps Geolocation API.
         Returns (latitude, longitude) if successful, or None if not.
         """
-        API_KEY = "AIzaSyC8dmyIo4iOlAGywPxU1JmYjm9olNPRDAQ"  # Use your Google API Key
+        API_KEY = "AIzaSyC8dmyIo4iOlAGywPxU1JmYjm9olNPRDAQ"  # Replace with your valid API Key
         endpoint = f"https://www.googleapis.com/geolocation/v1/geolocate?key={API_KEY}"
 
         try:
-            # Make the request to Google's Geolocation API
+            # Make a request to Google's Geolocation API
             response = requests.post(endpoint, json={})
-            response.raise_for_status()  # Raise HTTPError for bad responses
+            response.raise_for_status()  # Raise an HTTPError for bad responses
 
             # Parse the response JSON
             location = response.json()["location"]
@@ -355,47 +268,103 @@ class LocationBasedAdsApp:
             print(f"Error fetching location: {e}")
             return None
 
-    def handle_location_mode(self):
+    def view_geofences_and_ads(self):
         """
-        Handle the selected location mode: automatic or manual.
+        Display all geofences and ads created by the business user.
         """
-        if self.location_mode_var.get() == "automatic":
-            # Hide manual location input
-            self.manual_location_frame.pack_forget()
+        self.clear_window()
+        tk.Label(self.root, text="Your Geofences and Ads", font=("Arial", 16)).pack(pady=10)
 
-            # Fetch current location
-            current_location = self.get_current_location()
-            if current_location:
-                print(f"Setting GUI to detected location: {current_location}")  # Debug
-                self.latitude_entry.delete(0, tk.END)
-                self.longitude_entry.delete(0, tk.END)
-                self.latitude_entry.insert(0, str(current_location[0]))
-                self.longitude_entry.insert(0, str(current_location[1]))
-                self.check_for_offers()
+        conn = create_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT g.id, g.latitude, g.longitude, g.radius_km, a.title, a.description
+            FROM geofences g
+            LEFT JOIN ads a ON g.id = a.geofence_id
+            WHERE g.business_id = ?
+        """
+        cursor.execute(query, (self.logged_in_user_id,))
+        records = cursor.fetchall()
+        conn.close()
+
+        for record in records:
+            tk.Label(self.root, text=f"Geofence ID: {record[0]}").pack()
+            tk.Label(self.root, text=f"Center: ({record[1]}, {record[2]})").pack()
+            tk.Label(self.root, text=f"Radius: {record[3]} km").pack()
+            if record[4] and record[5]:
+                tk.Label(self.root, text=f"  Ad Title: {record[4]}").pack()
+                tk.Label(self.root, text=f"  Description: {record[5]}").pack()
             else:
-                messagebox.showerror("Error", "Unable to fetch current location.")
+                tk.Label(self.root, text="  No ads linked to this geofence.").pack()
+            tk.Label(self.root, text="").pack()  # Spacing
+
+        tk.Button(self.root, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=10)
+
+    def save_geofence_and_ad(self):
+        """
+        Save the geofence and associated ad to the database.
+        """
+        try:
+            latitude = float(self.geo_lat_entry.get())
+            longitude = float(self.geo_lon_entry.get())
+            radius_km = float(self.geo_radius_entry.get())
+            title = self.ad_title_entry.get()
+            description = self.ad_description_entry.get()
+
+            if not title or not description:
+                messagebox.showerror("Input Error", "Ad Title and Description are required.")
+                return
+
+            conn = create_connection()
+            cursor = conn.cursor()
+
+            # Insert geofence
+            cursor.execute("""
+                INSERT INTO geofences (business_id, latitude, longitude, radius_km)
+                VALUES (?, ?, ?, ?)
+            """, (self.logged_in_user_id, latitude, longitude, radius_km))
+            geofence_id = cursor.lastrowid
+
+            # Insert ad linked to the geofence
+            cursor.execute("""
+                INSERT INTO ads (geofence_id, title, description)
+                VALUES (?, ?, ?)
+            """, (geofence_id, title, description))
+
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Success", "Geofence and Ad added successfully!")
+            self.create_business_dashboard()
+        except ValueError:
+            messagebox.showerror("Input Error", "Invalid latitude, longitude, or radius.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save geofence and ad: {e}")
+
+    def display_ads(self, ads):
+        """
+        Display ads in the personal dashboard.
+        """
+        self.offers_text.delete(1.0, tk.END)
+        if ads:
+            for ad in ads:
+                self.offers_text.insert(tk.END, f"{ad[0]} - {ad[1]}\n")
         else:
-            # Show manual location input
-            self.manual_location_frame.pack(pady=10)
+            self.offers_text.insert(tk.END, "No ads available nearby.")
 
-    def update_location_periodically(self):
+    def clear_window(self):
         """
-        Fetch and update the user's location periodically.
+        Clear the current content of the window.
         """
+        for widget in self.root.winfo_children():
+            widget.destroy()
 
-        def update():
-            while self.location_mode_var.get() == "automatic":
-                current_location = self.get_current_location()
-                if current_location:
-                    print(f"Periodic location update: {current_location}")  # Debug
-                    self.latitude_entry.delete(0, tk.END)
-                    self.longitude_entry.delete(0, tk.END)
-                    self.latitude_entry.insert(0, str(current_location[0]))
-                    self.longitude_entry.insert(0, str(current_location[1]))
-                    self.check_for_offers()
-                time.sleep(10)  # Update every 10 seconds
-
-        threading.Thread(target=update, daemon=True).start()
+    def run(self):
+        """
+        Run the application.
+        """
+        self.root.mainloop()
 
 
 if __name__ == "__main__":

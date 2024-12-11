@@ -36,6 +36,7 @@ def initialize_database():
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
         radius_km REAL NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(business_id) REFERENCES users(id)
     )
     """)
@@ -47,6 +48,7 @@ def initialize_database():
         geofence_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(geofence_id) REFERENCES geofences(id)
     )
     """)
@@ -61,9 +63,4 @@ def debug_database():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    print("Tables in the database:", cursor.fetchall())
-    conn.close()
-
-if __name__ == "__main__":
-    initialize_database()
-    debug_database()
+    print("Tables in the database:",
