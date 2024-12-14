@@ -52,4 +52,4 @@ def test_user_login():
 
 
 if __name__ == "__main__":
-   
+    pytest.main()
