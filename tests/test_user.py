@@ -7,27 +7,27 @@ TEST_EMAIL = "business@test.com"
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
     """
-    Set up the database before each test and clean up afterward.
+    Seting up the database before each test and clean up afterward.
     """
     conn = create_connection()
     cursor = conn.cursor()
     try:
-        # Ensure the test email does not exist before the test
+        # Ensuring to test email does not exist before the test
         cursor.execute("DELETE FROM users WHERE email = ?", (TEST_EMAIL,))
         conn.commit()
     finally:
-        conn.close()  # Ensure the connection is always closed
+        conn.close()  # Ensuring the connection is always closed
 
-    yield  # Run the test
+    yield  # Running the test
 
     conn = create_connection()
     cursor = conn.cursor()
     try:
-        # Clean up the test email after the test
+        # Cleaning up the test email after the test
         cursor.execute("DELETE FROM users WHERE email = ?", (TEST_EMAIL,))
         conn.commit()
     finally:
-        conn.close()  # Ensure the connection is always closed
+        conn.close()  # Ensuring the connection is always closed
 
 
 def test_user_creation():

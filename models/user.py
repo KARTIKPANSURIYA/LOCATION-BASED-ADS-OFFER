@@ -1,16 +1,21 @@
+"""
+this code provides functionality for managing users in a location-based system. It defines the `User` class,
+which includes methods for user registration, authentication, and fetching user details.
+"""
+
 from utils.db_connection import create_connection
 
 
 class User:
     def __init__(self, username, email, password, user_type):
         """
-        Initialize the User object.
+        Initializing the User object.
 
         Args:
-            username (str): The username of the user.
-            email (str): The email address of the user.
-            password (str): The password of the user.
-            user_type (str): The type of user ('business' or 'personal').
+            username (str): the username of the user.
+            email (str): the email address of the user.
+            password (str): the password of the user.
+            user_type (str): the type of user ('business' or 'personal').
         """
         self.username = username
         self.email = email
@@ -19,7 +24,7 @@ class User:
 
     def save_to_db(self):
         """
-        Save the user to the database.
+        Saving the users to the database.
         """
         conn = create_connection()
         cursor = conn.cursor()
@@ -35,14 +40,14 @@ class User:
     @staticmethod
     def login(email, password):
         """
-        Authenticate the user by email and password.
+        Authenticating the user by email and password.
 
         Args:
             email (str): The email address of the user.
             password (str): The password of the user.
 
         Returns:
-            tuple: The user record if authentication is successful, None otherwise.
+            tuple: the user record if authentication is successful.
         """
         conn = create_connection()
         cursor = conn.cursor()
@@ -57,13 +62,13 @@ class User:
     @staticmethod
     def get_user_by_id(user_id):
         """
-        Fetch a user by their ID.
+        Fetching a user by their ID.
 
         Args:
-            user_id (int): The ID of the user.
+            user_id (int): the ID of the user.
 
         Returns:
-            tuple: The user record if found, None otherwise.
+            tuple: the user record if found, none otherwise.
         """
         conn = create_connection()
         cursor = conn.cursor()
@@ -78,7 +83,7 @@ class User:
     @staticmethod
     def is_email_registered(email):
         """
-        Check if an email is already registered in the database.
+        Checking if an email is already registered in the database.
 
         Args:
             email (str): The email address to check.

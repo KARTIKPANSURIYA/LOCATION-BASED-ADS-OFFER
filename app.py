@@ -1,3 +1,9 @@
+"""
+This module provides a GUI application for managing location-based advertisements and offers.
+The application allows business users to create and manage geofences and ads, while personal users can view offers based
+on their location (automatic or manually entry).
+"""
+
 import tkinter as tk
 from tkinter import messagebox
 from models.user import User
@@ -21,14 +27,17 @@ class LocationBasedAdsApp:
 
     def create_login_screen(self):
         """
-        Create the login screen for both business and personal users.
+        Creating the login screen for both business and personal users.
         """
         self.clear_window()
+        self.root.update_idletasks()  # Force UI refresh for a clean slate
+
         tk.Label(self.root, text="Location-Based Ads", font=("Arial", 16)).pack(pady=10)
 
         tk.Label(self.root, text="Email:").pack()
         self.email_entry = tk.Entry(self.root)
         self.email_entry.pack(pady=5)
+        self.email_entry.focus_set()  # Set focus to the email field for better UX
 
         tk.Label(self.root, text="Password:").pack()
         self.password_entry = tk.Entry(self.root, show="*")
@@ -44,7 +53,7 @@ class LocationBasedAdsApp:
 
     def create_signup_screen(self):
         """
-        Create the signup screen for new users.
+        Creating the signup screen for new users.
         """
         self.clear_window()
         tk.Label(self.root, text="Sign Up", font=("Arial", 16)).pack(pady=10)
@@ -71,7 +80,7 @@ class LocationBasedAdsApp:
 
     def signup(self):
         """
-        Handle user signup and save to the database.
+        Handling user signup and save to the database.
         """
         name = self.signup_name_entry.get()
         email = self.signup_email_entry.get()
@@ -82,7 +91,7 @@ class LocationBasedAdsApp:
             messagebox.showerror("Input Error", "All fields are required.")
             return
 
-        # Check if the email already exists
+        # Checking if the email already exists
         conn = create_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
@@ -93,7 +102,7 @@ class LocationBasedAdsApp:
             messagebox.showerror("Error", "Email already registered. Please log in.")
             return
 
-        # Save the new user
+        # Save the new user to db
         try:
             new_user = User(name, email, password, user_type)
             new_user.save_to_db()
@@ -104,16 +113,16 @@ class LocationBasedAdsApp:
 
     def login(self):
         """
-        Handle login for business and personal users.
+        Handling login for business and personal users.
         """
         email = self.email_entry.get()
         password = self.password_entry.get()
         user_type = self.user_type_var.get()
 
         user = User.login(email, password)
-        if user and user[4] == user_type:  # user[4] is the user_type
-            self.logged_in_user_id = user[0]  # user[0] is the user ID
-            messagebox.showinfo("Success", f"Welcome, {user[1]}!")  # user[1] is the username
+        if user and user[4] == user_type:
+            self.logged_in_user_id = user[0]
+            messagebox.showinfo("Success", f"Welcome, {user[1]}!")
 
             if user_type == "business":
                 self.create_business_dashboard()
@@ -122,24 +131,32 @@ class LocationBasedAdsApp:
         else:
             messagebox.showerror("Error", "Invalid credentials or user type.")
 
+    def logout(self):
+        """
+        Logging out the user and returning to the login screen.
+        """
+        self.logged_in_user_id = None
+        messagebox.showinfo("Logout", "You have been logged out successfully!")
+        self.create_login_screen()
+
     def create_business_dashboard(self):
         """
-        Create the dashboard for business users to manage geofences and ads.
+        Creating the dashboard for business users to manage geofences and ads.
         """
         self.clear_window()
         tk.Label(self.root, text="Business Dashboard", font=("Arial", 16)).pack(pady=10)
 
         tk.Button(self.root, text="Add Geofence and Ad", command=self.add_geofence_and_ad).pack(pady=5)
         tk.Button(self.root, text="View Geofences and Ads", command=self.view_geofences_and_ads).pack(pady=5)
-
+        tk.Button(self.root, text="Logout", command=self.logout).pack(pady=10)
     def create_personal_user_dashboard(self):
         """
-        Create the dashboard for personal users to view offers.
+        Creating the dashboard for personal users to view offers.
         """
         self.clear_window()
         tk.Label(self.root, text="Personal User Dashboard", font=("Arial", 16)).pack(pady=10)
 
-        # Initialize location mode variable
+        # Initializing location mode variable
         self.location_mode_var = tk.StringVar(value="automatic")
 
         # Location Mode: Automatic or Manual
@@ -158,21 +175,24 @@ class LocationBasedAdsApp:
         self.longitude_entry.pack(pady=5)
         self.manual_location_frame.pack(pady=10)
 
-        # Check Offers Button
+        # Checkin for Offers Button
         tk.Button(self.root, text="Check for Offers", command=self.check_for_offers).pack(pady=10)
 
         self.offers_text = tk.Text(self.root, width=50, height=15)
         self.offers_text.pack(pady=5)
+
+        # Logout Button
+        tk.Button(self.root, text="Logout", command=self.logout).pack(pady=10)
 
         # Automatically fetch location on start
         self.handle_location_mode()
 
     def handle_location_mode(self):
         """
-        Handle the selected location mode: automatic or manual.
+        Handling the selected location mode: automatic or manual.
         """
         if self.location_mode_var.get() == "automatic":
-            # Fetch current location
+            # Fetching current location
             current_location = self.get_current_location()
             if current_location:
                 self.latitude_entry.delete(0, tk.END)
@@ -182,9 +202,9 @@ class LocationBasedAdsApp:
                 self.check_for_offers()
             else:
                 messagebox.showerror("Error", "Unable to fetch current location.")
+            self.manual_location_frame.pack_forget()  # Hide manual location frame
         else:
-            # Show manual location input
-            self.manual_location_frame.pack(pady=10)
+            self.manual_location_frame.pack(pady=10)  # Show manual location frame
 
     def view_geofences_and_ads(self):
         """
@@ -193,24 +213,24 @@ class LocationBasedAdsApp:
         self.clear_window()
         tk.Label(self.root, text="Your Geofences and Ads", font=("Arial", 16)).pack(pady=10)
 
-        # Create a frame to hold the canvas and scrollbar
+        # Creating a frame to hold the canvas and scrollbar
         frame = tk.Frame(self.root)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create a canvas widget
+        # Creating a canvas for widget
         canvas = tk.Canvas(frame)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Add a scrollbar to the canvas
+        #scrollbar creation
         scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=canvas.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Create a frame inside the canvas to hold the content
+        # frame inside the canvas for to hold the content
         content_frame = tk.Frame(canvas)
         canvas.create_window((0, 0), window=content_frame, anchor="nw")
 
-        # Fetch data from the database
+        # Fetching the data from the database
         conn = create_connection()
         cursor = conn.cursor()
 
@@ -224,7 +244,7 @@ class LocationBasedAdsApp:
         records = cursor.fetchall()
         conn.close()
 
-        # Add geofences and ads to the content frame
+        # Adding geofences and ads to the content frame
         for record in records:
             tk.Label(content_frame, text=f"Geofence ID: {record[0]}").pack()
             tk.Label(content_frame, text=f"Center: ({record[1]}, {record[2]})").pack()
@@ -234,18 +254,18 @@ class LocationBasedAdsApp:
                 tk.Label(content_frame, text=f"  Description: {record[5]}").pack()
             else:
                 tk.Label(content_frame, text="  No ads linked to this geofence.").pack()
-            tk.Label(content_frame, text="").pack()  # Spacing
+            tk.Label(content_frame, text="").pack()
 
-        # Add a "Back to Dashboard" button inside the scrollable area
+        # Adding a "Back to Dashboard" button inside the scrollable area
         tk.Button(content_frame, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=10)
 
-        # Update the canvas to reflect the size of the content
+        # Updating the canvas to reflect the size of the content
         content_frame.update_idletasks()
         canvas.configure(scrollregion=canvas.bbox("all"))
 
     def add_geofence_and_ad(self):
         """
-        Allow business users to add geofences and ads.
+        Allowing business users to add geofences and ads.
         """
         self.clear_window()
         print("Debug: Executing add_geofence_and_ad")  # Debugging message
@@ -278,14 +298,14 @@ class LocationBasedAdsApp:
 
     def get_current_location(self):
         """
-        Fetch the user's current location using Google Maps Geolocation API.
+        Fetching the user's current location using Google Maps Geolocation API.
         Returns (latitude, longitude) if successful, or None if not.
         """
         API_KEY = "AIzaSyC8dmyIo4iOlAGywPxU1JmYjm9olNPRDAQ"  # Replace with your valid API Key
         endpoint = f"https://www.googleapis.com/geolocation/v1/geolocate?key={API_KEY}"
 
         try:
-            # Make a request to Google's Geolocation API
+            # Making a request to Google's Geolocation API
             response = requests.post(endpoint, json={})
             response.raise_for_status()  # Raise an HTTPError for bad responses
 
@@ -300,7 +320,7 @@ class LocationBasedAdsApp:
 
     def display_ads(self, ads):
         """
-        Display ads in the personal dashboard.
+        Displaying ads in the personal dashboard.
         """
         self.offers_text.delete(1.0, tk.END)
         if ads:
@@ -361,17 +381,15 @@ class LocationBasedAdsApp:
 
     def check_for_offers(self):
         """
-        Check for relevant ads based on the user's selected location.
+        Checking for relevant ads based on the user's selected location.
         """
         try:
-            # Fetch user-provided or detected location
+            # Fetching user provided or detected location
             user_lat = float(self.latitude_entry.get())
             user_lon = float(self.longitude_entry.get())
 
-            # Fetch relevant ads
+            # Fetching relevant ads
             ads = get_relevant_ads(user_lat, user_lon)
-
-            # Clear the text widget for offers
             self.offers_text.delete("1.0", tk.END)
 
             # Display new ads
@@ -387,14 +405,14 @@ class LocationBasedAdsApp:
 
     def clear_window(self):
         """
-        Clear the current content of the window.
+        Clearing the current content of the window.
         """
         for widget in self.root.winfo_children():
             widget.destroy()
 
     def run(self):
         """
-        Run the application.
+        Running the application.
         """
         self.root.mainloop()
 

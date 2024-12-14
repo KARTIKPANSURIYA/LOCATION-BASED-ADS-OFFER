@@ -1,10 +1,15 @@
+"""
+Below code provides functions for managing geofences and retrieving ads based on geolocation data. It includes
+methods to check user location within a geofence, fetch relevant ads, manage geofences, and assign geofences to ads.
+"""
+
 from geopy.distance import geodesic
 from utils.db_connection import create_connection
 
 
 def is_within_geofence(user_location, geofence_location, radius_km):
     """
-    Check if a user's location is within a geofence radius.
+    Checking if a user's location is within a geofence radius.
 
     Args:
         user_location (tuple): (latitude, longitude) of the user.
@@ -21,7 +26,7 @@ def is_within_geofence(user_location, geofence_location, radius_km):
 
 def get_relevant_ads(user_lat, user_lon):
     """
-    Fetch relevant ads based on user's location.
+    Fetching relevant ads based on user's location.
 
     Args:
         user_lat (float): Latitude of the user.
@@ -33,7 +38,7 @@ def get_relevant_ads(user_lat, user_lon):
     conn = create_connection()
     cursor = conn.cursor()
 
-    # Find geofences within range and join with ads
+    # Finding the geofences within range and join with ads
     query = """
         SELECT ads.title, ads.description
         FROM ads
@@ -55,7 +60,7 @@ def get_relevant_ads(user_lat, user_lon):
 
 def get_all_geofences():
     """
-    Fetch all geofences from the database.
+    Fetching all geofences from the database.
 
     Returns:
         list: List of all geofences.
@@ -99,7 +104,7 @@ def save_geofence(business_id, latitude, longitude, radius_km):
 
 def assign_geofence_to_ad(ad_id, user_lat, user_lon):
     """
-    Assign a geofence to an ad based on proximity to the user's location.
+    Assigning a geofence to an ad based on proximity to the user's location.
 
     Args:
         ad_id (int): ID of the ad to assign.
@@ -112,7 +117,7 @@ def assign_geofence_to_ad(ad_id, user_lat, user_lon):
     conn = create_connection()
     cursor = conn.cursor()
 
-    # Find the nearest geofence to the user's location
+    # Finding the nearest geofence to the user's location
     query = """
         SELECT id, (
             6371 * acos(
@@ -130,7 +135,7 @@ def assign_geofence_to_ad(ad_id, user_lat, user_lon):
 
     if nearest_geofence:
         geofence_id = nearest_geofence[0]
-        # Update the ad with the nearest geofence ID
+        # Updated the ad with the nearest geofence ID
         cursor.execute("""
             UPDATE ads SET geofence_id = ? WHERE id = ?
         """, (geofence_id, ad_id))

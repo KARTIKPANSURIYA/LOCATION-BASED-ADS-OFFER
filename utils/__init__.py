@@ -1,4 +1,4 @@
-# Test this snippet to check the connection speed
+# Testing this  to check the connection speed for seeing output take how much time to connect
 import time
 from utils.db_connection import create_connection
 

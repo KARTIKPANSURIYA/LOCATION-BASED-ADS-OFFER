@@ -1,3 +1,7 @@
+"""
+This module provides functionality for managing geofences in a location-based system. It defines the Geofence class,
+which includes methods for creating geofences, saving them to a database, and retrieving all geofences.
+"""
 from utils.db_connection import create_connection
 
 class Geofence:

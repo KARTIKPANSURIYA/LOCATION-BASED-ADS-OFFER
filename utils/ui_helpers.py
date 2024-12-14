@@ -1,8 +1,13 @@
+"""
+Below code provides utility functions to create fade-in and fade-out animations for tkinter widgets.
+The animations are achieved by gradually adjusting the transparency of the tkinter window.
+"""
+
 import tkinter as tk
 
 def fade_in(widget, steps=10, interval=50):
     """
-    Create a fade-in animation for a tkinter widget.
+    Creating a fade-in animation for a tkinter widget.
 
     Args:
         widget (tk.Widget): The tkinter widget to animate.
@@ -17,7 +22,7 @@ def fade_in(widget, steps=10, interval=50):
 
 def fade_out(widget, steps=10, interval=50):
     """
-    Create a fade-out animation for a tkinter widget.
+    Creating a fade-out animation for a tkinter widget.
 
     Args:
         widget (tk.Widget): The tkinter widget to animate.

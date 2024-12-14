@@ -1,9 +1,14 @@
+"""
+This code file  provides functionality for managing the SQLite database used in the location-based system. It includes
+utilities for creating and validating database connections, initializing tables, and managing data for users, geofences,
+and ads.
+"""
 import sqlite3
 import os
 
 def create_connection():
     """
-    Create a connection to the SQLite database.
+    Creating a connection to the SQLite database.
     Ensures that the database.sqlite file is located in the project root directory.
     """
     db_path = os.path.join(os.path.dirname(__file__), '..', 'database.sqlite')
@@ -12,7 +17,7 @@ def create_connection():
 
 def initialize_database():
     """
-    Create the necessary tables in the SQLite database if they don't already exist.
+    Creating the necessary tables in the SQLite database if they don't already exist.
     """
     conn = create_connection()
     cursor = conn.cursor()
@@ -58,7 +63,7 @@ def initialize_database():
 
 def debug_database():
     """
-    Debug function to print the names of all tables in the database.
+    debug function to print the names of all tables in the database.
     """
     conn = create_connection()
     cursor = conn.cursor()
@@ -89,7 +94,7 @@ def validate_geofence_id(geofence_id):
 
 def get_business_geofences_and_ads(business_id):
     """
-    Fetches geofences and associated ads for a specific business.
+    Fetching geofences and associated ads for a specific business.
 
     Args:
         business_id (int): The ID of the business.
@@ -127,13 +132,13 @@ def save_ad(geofence_id, title, description):
     Returns:
         None
     """
-    # Validate geofence_id before proceeding
+    # Validating geofence_id before proceeding
     validate_geofence_id(geofence_id)
 
     conn = create_connection()
     cursor = conn.cursor()
 
-    # Insert the ad
+    # Inserting the ad
     cursor.execute("""
         INSERT INTO ads (geofence_id, title, description)
         VALUES (?, ?, ?)

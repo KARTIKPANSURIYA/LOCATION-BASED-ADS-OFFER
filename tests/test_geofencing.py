@@ -4,17 +4,17 @@ from utils.geofence_logic import is_within_geofence, get_relevant_ads
 
 def test_is_within_geofence():
     """
-    Test if a user's location is correctly identified as being within or outside a geofence.
+    Testing if a user's location is correctly identified as being within or outside a geofence.
     """
     user_location = (40.730610, -73.935242)  # New York City
     geofence_location = (40.7128, -74.0060)  # Geofence: Lower Manhattan
     radius_km = 5.0
 
-    # Case 1: User is outside the geofence
+    # Case 1: User is outside of the geofence
     assert not is_within_geofence(user_location, geofence_location, radius_km), "User should be outside the geofence"
     print("User is correctly identified as outside the geofence.")
 
-    # Case 2: Adjust the radius to include the user
+    # Case 2: Adjusting the radius to include the user
     radius_km = 7.0
     assert is_within_geofence(user_location, geofence_location, radius_km), "User should be within the geofence"
     print("User is correctly identified as within the geofence.")

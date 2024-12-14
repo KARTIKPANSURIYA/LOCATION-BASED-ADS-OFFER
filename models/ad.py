@@ -1,3 +1,8 @@
+"""This module provides functionality for managing advertisements in a location-based system. It defines the `Ad` class,
+which includes methods for saving ads to the database, fetching ads for specific geofences , and managing
+ad data. It also ensures that ads are associated with valid geofences.
+"""
+
 from utils.db_connection import create_connection
 from utils.db_connection import validate_geofence_id
 
@@ -10,7 +15,7 @@ class Ad:
 
     def save_to_db(self):
         """
-        Save the ad to the database with the validated geofence ID.
+        Saving the ad to the database with the validated geofence ID.
         """
         validate_geofence_id(self.geofence_id)
 
@@ -28,7 +33,7 @@ class Ad:
     @staticmethod
     def get_ads_by_geofence(geofence_id):
         """
-        Fetch all ads for a specific geofence.
+        Fetching  all the ads for a specific geofence.
         """
         conn = create_connection()
         cursor = conn.cursor()
@@ -42,7 +47,7 @@ class Ad:
     @staticmethod
     def get_all_ads():
         """
-        Fetch all ads from the database.
+        Fetching all the ads from the database.
         """
         conn = create_connection()
         cursor = conn.cursor()
@@ -59,7 +64,7 @@ class Ad:
         conn = create_connection()
         cursor = conn.cursor()
 
-        # Find the most recent geofence for the business
+        # Finding the most recent geofence for the business
         cursor.execute("""
             SELECT id FROM geofences
             WHERE business_id = ?
@@ -73,7 +78,7 @@ class Ad:
 
         geofence_id = geofence[0]
 
-        # Insert the ad
+        # Inserting the ad
         cursor.execute("""
             INSERT INTO ads (geofence_id, title, description)
             VALUES (?, ?, ?)
