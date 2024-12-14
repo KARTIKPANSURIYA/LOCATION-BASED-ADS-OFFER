@@ -58,6 +58,26 @@ def initialize_database():
     )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            geofence_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            timestamp TIMESTAMP NOT NULL,
+            FOREIGN KEY(geofence_id) REFERENCES geofences(id),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+
+    # Create ad_views table
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ad_views (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ad_id INTEGER NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ad_id) REFERENCES ads(id)
+            )
+        """)
     conn.commit()
     conn.close()
 
@@ -146,7 +166,46 @@ def save_ad(geofence_id, title, description):
 
     conn.commit()
     conn.close()
+def get_ad_views_for_business(business_id):
+    """
+    Fetches the number of views for each ad belonging to a specific business.
 
+    Args:
+        business_id (int): The ID of the business owner.
+
+    Returns:
+        list: A list of tuples (ad_title, view_count).
+    """
+    conn = create_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT ads.title, COUNT(ad_views.id) AS view_count
+        FROM ads
+        LEFT JOIN ad_views ON ads.id = ad_views.ad_id
+        WHERE ads.geofence_id IN (
+            SELECT id FROM geofences WHERE business_id = ?
+        )
+        GROUP BY ads.id
+        ORDER BY view_count DESC;
+    """
+    cursor.execute(query, (business_id,))
+    results = cursor.fetchall()
+    conn.close()
+    return results
+
+def log_user_entry(geofence_id, user_id):
+    """
+    Logs a user entry into a geofence.
+    """
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO user_entries (geofence_id, user_id, timestamp)
+        VALUES (?, ?, datetime('now'))
+    """, (geofence_id, user_id))
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     initialize_database()

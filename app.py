@@ -7,13 +7,11 @@ on their location (automatic or manually entry).
 import tkinter as tk
 from tkinter import messagebox
 from models.user import User
-from models.geofence import Geofence
-from models.ad import Ad
 from utils.geofence_logic import get_relevant_ads
-from utils.db_connection import create_connection
-import threading
-import time
+from utils.db_connection import create_connection, get_ad_views_for_business
 import requests
+from models.analytics import plot_geofences_on_map, count_users_in_geofences, plot_user_geofence_counts, plot_ad_views
+from datetime import datetime
 
 class LocationBasedAdsApp:
     def __init__(self):
@@ -148,6 +146,7 @@ class LocationBasedAdsApp:
 
         tk.Button(self.root, text="Add Geofence and Ad", command=self.add_geofence_and_ad).pack(pady=5)
         tk.Button(self.root, text="View Geofences and Ads", command=self.view_geofences_and_ads).pack(pady=5)
+        tk.Button(self.root, text="View Analytics", command=self.show_analytics).pack(pady=10)
         tk.Button(self.root, text="Logout", command=self.logout).pack(pady=10)
     def create_personal_user_dashboard(self):
         """
@@ -206,9 +205,24 @@ class LocationBasedAdsApp:
         else:
             self.manual_location_frame.pack(pady=10)  # Show manual location frame
 
+    def show_analytics(self):
+        """
+        Show ad views analytics using a bar chart.
+        """
+        # Fetching ad views for the logged-in business owner
+        ad_views = get_ad_views_for_business(self.logged_in_user_id)
+        print("Ad views fetched:", ad_views)  # Debugging
+
+        if not ad_views:
+            messagebox.showwarning("No Data", "No ad views available for your ads.")
+            return
+
+        # Plotting the ad views
+        plot_ad_views(ad_views)
+
     def view_geofences_and_ads(self):
         """
-        Display all geofences and ads created by the business user with a scrollbar.
+        Display all geofences and ads created by the business user with proper alignment and a scrollbar.
         """
         self.clear_window()
         tk.Label(self.root, text="Your Geofences and Ads", font=("Arial", 16)).pack(pady=10)
@@ -217,16 +231,16 @@ class LocationBasedAdsApp:
         frame = tk.Frame(self.root)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        # Creating a canvas for widget
+        # Creating a canvas for widgets
         canvas = tk.Canvas(frame)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        #scrollbar creation
+        # Scrollbar creation
         scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL, command=canvas.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # frame inside the canvas for to hold the content
+        # Frame inside the canvas to hold the content
         content_frame = tk.Frame(canvas)
         canvas.create_window((0, 0), window=content_frame, anchor="nw")
 
@@ -244,20 +258,28 @@ class LocationBasedAdsApp:
         records = cursor.fetchall()
         conn.close()
 
-        # Adding geofences and ads to the content frame
+        # Adding geofences and ads to the content frame with alignment and padding
         for record in records:
-            tk.Label(content_frame, text=f"Geofence ID: {record[0]}").pack()
-            tk.Label(content_frame, text=f"Center: ({record[1]}, {record[2]})").pack()
-            tk.Label(content_frame, text=f"Radius: {record[3]} km").pack()
-            if record[4] and record[5]:
-                tk.Label(content_frame, text=f"  Ad Title: {record[4]}").pack()
-                tk.Label(content_frame, text=f"  Description: {record[5]}").pack()
+            geofence_id, latitude, longitude, radius_km, title, description = record
+
+            tk.Label(content_frame, text=f"Geofence ID: {geofence_id}", font=("Arial", 12, "bold"), anchor="w").pack(
+                fill=tk.X, padx=10, pady=5)
+            tk.Label(content_frame, text=f"Center: ({latitude:.6f}, {longitude:.6f})", anchor="w").pack(fill=tk.X,
+                                                                                                        padx=20)
+            tk.Label(content_frame, text=f"Radius: {radius_km} km", anchor="w").pack(fill=tk.X, padx=20)
+
+            if title and description:
+                tk.Label(content_frame, text=f"Ad Title: {title}", font=("Arial", 12, "italic"), anchor="w").pack(
+                    fill=tk.X, padx=20)
+                tk.Label(content_frame, text=f"Description: {description}", anchor="w").pack(fill=tk.X, padx=20, pady=5)
             else:
-                tk.Label(content_frame, text="  No ads linked to this geofence.").pack()
+                tk.Label(content_frame, text="No ads linked to this geofence.", anchor="w", fg="gray").pack(fill=tk.X,padx=20, pady=5)
+
+            # Adding a separator
             tk.Label(content_frame, text="").pack()
 
         # Adding a "Back to Dashboard" button inside the scrollable area
-        tk.Button(content_frame, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=10)
+        tk.Button(content_frame, text="Back to Dashboard", command=self.create_business_dashboard).pack(pady=10, anchor="center")
 
         # Updating the canvas to reflect the size of the content
         content_frame.update_idletasks()
@@ -277,20 +299,20 @@ class LocationBasedAdsApp:
         self.geo_lat_entry = tk.Entry(self.root)  # Setting as instance variable
         self.geo_lat_entry.pack(pady=5)
 
-        self.geo_lon_entry = tk.Entry(self.root)  # Setting as instance variable
+        self.geo_lon_entry = tk.Entry(self.root)
         self.geo_lon_entry.pack(pady=5)
 
         tk.Label(self.root, text="Radius (km):").pack(pady=5)
-        self.geo_radius_entry = tk.Entry(self.root)  # Setting as instance variable
+        self.geo_radius_entry = tk.Entry(self.root)
         self.geo_radius_entry.pack(pady=5)
 
         # Ad Inputs
         tk.Label(self.root, text="Ad Title:").pack(pady=5)
-        self.ad_title_entry = tk.Entry(self.root)  # Setting as instance variable
+        self.ad_title_entry = tk.Entry(self.root)
         self.ad_title_entry.pack(pady=5)
 
         tk.Label(self.root, text="Ad Description:").pack(pady=5)
-        self.ad_description_entry = tk.Entry(self.root)  # Setting as instance variable
+        self.ad_description_entry = tk.Entry(self.root)
         self.ad_description_entry.pack(pady=5)
 
         tk.Button(self.root, text="Add", command=self.save_geofence_and_ad).pack(pady=10)
@@ -379,25 +401,38 @@ class LocationBasedAdsApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save geofence and ad: {e}")
 
+    from datetime import datetime
+
     def check_for_offers(self):
         """
         Checking for relevant ads based on the user's selected location.
         """
         try:
-            # Fetching user provided or detected location
+            # Fetch user-provided or detected location
             user_lat = float(self.latitude_entry.get())
             user_lon = float(self.longitude_entry.get())
 
-            # Fetching relevant ads
+            # Fetch relevant ads based on user location
             ads = get_relevant_ads(user_lat, user_lon)
             self.offers_text.delete("1.0", tk.END)
 
-            # Display new ads
             if ads:
+                conn = create_connection()
+                cursor = conn.cursor()
                 for ad in ads:
+                    # Display ad on the Personal Dashboard
                     self.offers_text.insert(tk.END, f"Ad Title: {ad[0]}\nDescription: {ad[1]}\n\n")
+
+                    # Log the ad view (impression) in the database
+                    cursor.execute("""
+                        INSERT INTO ad_views (ad_id, timestamp)
+                        SELECT id, ? FROM ads WHERE title = ? LIMIT 1
+                    """, (datetime.now(), ad[0]))
+                conn.commit()
+                conn.close()
             else:
-                self.offers_text.insert(tk.END, "No offers available in your area.\n")
+                self.offers_text.insert(tk.END, "No offers available nearby.\n")
+
         except ValueError:
             messagebox.showerror("Input Error", "Please enter valid latitude and longitude.")
         except Exception as e:
